@@ -1,0 +1,65 @@
+# AGENTS.md
+
+## Project shape
+
+- This repo is the public, opinionated composition package for Fitch's active Pi extensions, skills, settings, and setup flow.
+- Canonical sources:
+  - `prompts/fitch-setup.md` and `prompts/audit/github-open-issues-prs.md` for the two registered slash commands; other prompt files are retained source material.
+  - `extensions/anthropic-image-guard.ts` for Claude-bound image handling when global auto-resize is off.
+  - `extensions/clean-footer.ts` for a compact footer without cumulative token, cache, or cost counters.
+  - `extensions/fast-mode.ts` for the shared `/anthropic-fast`, `/codex-fast`, and `/xai-fast` toggles.
+  - `extensions/session-name.ts` for stable, searchable session naming and protected role identifiers.
+  - `extensions/setup-models.ts` for read-only model availability in the running Pi session during setup.
+  - `extensions/write-prompt.ts` for `/draft` rewrite, `/side-question` off-transcript answers, accept/copy/tweak/deny, and `write-prompt.json` model override.
+  - `extensions/session-restart.ts` for `/restart`, private process-local control sockets, exact saved-session preservation, and default busy skipping.
+  - `examples/settings.json` for the safe, non-secret behavioral settings subset.
+  - `setup-manifest.json` for unpinned package sources, required model routes, and kit resources.
+  - `templates/working-agreement.md` for the optional managed working-agreement blocks.
+  - `package.json#pi` for the resources Pi loads from this package.
+- The `pi-subagents` package owns the sixteen specialist profiles and model routing. Do not copy them back into this kit or restore agent-sync code.
+- Keep `README.md`, `setup-manifest.json`, and `docs/pi-setup.md` aligned when prompts, packages, models, install flow, or source-of-truth rules change.
+
+## Commands
+
+- Install deps: `npm install`
+- Validate repo: `npm run check`
+- Package load smoke: `npm run smoke`
+- Install/update package in Pi from this checkout: `pi install "$PWD"`
+- After changing extension code or dependencies, start a fresh Pi process before runtime verification. `/reload` refreshes settings and non-code resources; a new conversation in the old process is insufficient.
+
+## Editing rules
+
+- Use npm and Node `>=24.0.0`; do not introduce another package manager.
+- Keep this package an opinionated composition layer. Independent extensions and skill packages must not depend on it.
+- Keep only active public resources registered in `package.json#pi` and `setup-manifest.json`.
+- Do not add duplicate subagent or skill copies. Point to the public owning package without pinning extension installs to a ref or version.
+
+## Prompt templates
+
+- Prompt filenames are slash-command names. Keep `package.json#pi.prompts` and `setup-manifest.json#kitResources.prompts` limited to prompts that belong in the active public setup.
+- Prompt frontmatter should stay native and portable: use fields such as `description:` and `argument-hint:`.
+- Do not add `model:`, `thinking:`, or extension-only skill injection to prompt frontmatter.
+- Prefer Pi template defaults like `${1:-default}` for optional args; document quoted multi-word args when relevant.
+
+## Extension and package work
+
+- Before changing Pi runtime/package behavior, read the installed Pi docs/types for the touched surface, especially `docs/packages.md`, `docs/prompt-templates.md`, and `docs/extensions.md` under the installed Pi root.
+- Keep `extensions/anthropic-image-guard.ts` scoped to Claude models on the `anthropic-messages` wire API (the API alone is shared by non-Claude vendors) and based on Pi's native `resizeImage`; preserve its pre-decode source limits and do not reintroduce global resizing logic.
+- Keep `extensions/clean-footer.ts` free of cumulative token, cache, and cost counters; preserve context usage, model details, extension statuses, and wrapping without truncation. Verbosity comes from the controller's native `verbosity` status, never another config reader.
+- Keep `extensions/fast-mode.ts` scoped and preserve `/fast` plus `--fast` as aliases for the shared OpenAI toggle: OpenAI and xAI priority ride `before_provider_request` for `openai`/`openai-codex`/`xai` plus `cloudflare-ai-gateway` models whose id starts with `gpt-` or is `o3`/`o4-mini` (including their exact `2025-04-16` snapshots) for the OpenAI toggle, or starts with `grok-` for the xAI toggle; other gateway o-series and namespaced Workers AI models stay excluded; Anthropic fast mode owns the `anthropic-messages` override for only the `anthropic` and `cloudflare-ai-gateway` providers, appends the beta at fetch time, and never sends `speed` when the header cannot be attached. Keep the gateway endpoint-placeholder resolution in `fastStream`, the existing state filenames, and the doubled Anthropic fast cost rates.
+- Keep `extensions/session-name.ts` metadata inert and its coordinator/numbered-subagent removal confirmation intact.
+- Keep `extensions/write-prompt.ts` off the main transcript: native provider-neutral streaming completion without tools, session provider/model/thinking inheritance with optional `write-prompt.json` overrides, flattened tool history retaining result images, built-in dialogs, and `copyToClipboard` for Copy. Preserve the native Pi 0.84.2 provider fallback. Only `/draft` Accept calls `sendUserMessage`; preserve busy steering and original/draft recovery. `/side-question` never sends.
+- Keep the Agent Browser prerequisite aligned with the released wrapper's tested compatibility baseline.
+- Keep restart on public Pi APIs and Node exit/execve, never a daemon or terminal keystroke bridge. Require the fork's native Bash/pending-input/nextTurn activity facts; unsupported hosts must refuse, not guess idle. No argv/environment in socket replies or persisted state. See `docs/pi-setup.md`.
+- Runtime dependencies belong in `dependencies`; Pi core packages stay peer dependencies with `"*"` unless installed Pi docs say otherwise.
+
+## Validation
+
+- Run `npm run check` after edits to `package.json`, `setup-manifest.json`, `extensions/`, `scripts/`, or registered prompts; add `npm run smoke` when package resources changed.
+- Run `npm run regression:fast-mode` after changing fast-mode toggles, eligibility, payload or header injection, or state handling.
+- Run `node --test scripts/validate-regression.mjs` after changing context-policy validation or its inputs.
+- Run `npm run regression:session-name` after changing naming guidance, metadata injection, protected identities, or its migration gate.
+- Run `npm run regression:write-prompt` after changing `/draft` config parsing, writer history, activity reporting, or accept/copy/tweak/deny behavior.
+- Run `npm run regression:session-restart` and the disposable `npm run smoke:restart` recipe in `README.md` after restart changes; include the real optional-integration fixtures when touching child status or virtual cwd.
+- For runtime-facing changes, also verify Pi loads the package through `pi install ...` and a fresh Pi process when practical.
+- Keep this file short and project-specific; point to `README.md` or Pi docs instead of copying generic coding rules.
